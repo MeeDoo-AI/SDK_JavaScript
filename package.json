@@ -1,6 +1,6 @@
 {
   "name": "meedoo-ai",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Official MeeDoo AI JavaScript/TypeScript SDK — Chat Completions, Models, and more",
   "main": "src/index.js",
   "types": "src/index.d.ts",

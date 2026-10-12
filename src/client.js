@@ -60,46 +60,76 @@ class ChatCompletions {
     const isHttps = url.protocol === 'https:';
     const mod = isHttps ? https : http;
 
-    yield new Promise((resolve, reject) => {
-      const req = mod.request(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this._client.apiKey}`,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(body),
-        },
-      }, (res) => {
-        if (res.statusCode === 401) return reject(new AuthenticationError());
-        if (res.statusCode === 429) return reject(new RateLimitError());
-        if (res.statusCode >= 400) {
-          let data = '';
-          res.on('data', (c) => data += c);
-          res.on('end', () => {
-            try { reject(new APIError(JSON.parse(data).detail || `HTTP ${res.statusCode}`)); }
-            catch { reject(new APIError(`HTTP ${res.statusCode}`)); }
-          });
-          return;
-        }
+    const queue = [];
+    let resolveWait = null;
+    let done = false;
+    let error = null;
 
-        let buffer = '';
-        res.on('data', (chunk) => {
-          buffer += chunk.toString();
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const dataStr = line.slice(6).trim();
-              if (dataStr === '[DONE]') return resolve();
-              try { resolve({ chunk: JSON.parse(dataStr) }); } catch {}
-            }
-          }
+    function push(item) {
+      if (resolveWait) {
+        const r = resolveWait;
+        resolveWait = null;
+        r(item);
+      } else {
+        queue.push(item);
+      }
+    }
+
+    function next() {
+      if (queue.length > 0) return Promise.resolve(queue.shift());
+      if (done) return Promise.resolve({ done: true });
+      if (error) return Promise.reject(error);
+      return new Promise((resolve) => { resolveWait = resolve; });
+    }
+
+    const req = mod.request(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this._client.apiKey}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, (res) => {
+      if (res.statusCode === 401) { error = new AuthenticationError(); push(null); return; }
+      if (res.statusCode === 429) { error = new RateLimitError(); push(null); return; }
+      if (res.statusCode >= 400) {
+        let data = '';
+        res.on('data', (c) => data += c);
+        res.on('end', () => {
+          try { error = new APIError(JSON.parse(data).detail || `HTTP ${res.statusCode}`); }
+          catch { error = new APIError(`HTTP ${res.statusCode}`); }
+          push(null);
         });
-        res.on('end', () => resolve());
+        return;
+      }
+
+      let buffer = '';
+      res.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            if (dataStr === '[DONE]') { done = true; push(null); return; }
+            try { push({ value: JSON.parse(dataStr), done: false }); } catch {}
+          }
+        }
       });
-      req.on('error', reject);
-      req.write(body);
-      req.end();
+      res.on('end', () => { done = true; push(null); });
     });
+
+    req.on('error', (e) => { error = new APIError(e.message); push(null); });
+    req.write(body);
+    req.end();
+
+    while (true) {
+      const item = await next();
+      if (item === null || item.done === true) break;
+      yield item.value;
+    }
+
+    if (error) throw error;
   }
 
   createSync = null; // placeholder for sync version
