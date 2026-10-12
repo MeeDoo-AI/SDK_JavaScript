@@ -14,7 +14,10 @@
   "homepage": "https://meedoo.co",
   "repository": {
     "type": "git",
-    "url": "https://github.com/meedoo-ai/meedoo-js"
+    "url": "https://github.com/MeeDoo-AI/SDK_JavaScript"
+  },
+  "bugs": {
+    "url": "https://github.com/MeeDoo-AI/SDK_JavaScript/issues"
   },
   "dependencies": {}
 }

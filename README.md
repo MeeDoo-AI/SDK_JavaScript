@@ -2,9 +2,15 @@
 
 > Add AI to your JavaScript app in 3 lines. No AI experience needed.
 
+[![npm version](https://img.shields.io/npm/v/meedoo-ai.svg)](https://www.npmjs.com/package/meedoo-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## What is this?
 
 MeeDoo is an AI platform (like ChatGPT, but yours). This SDK lets you talk to MeeDoo's AI from your JavaScript/Node.js code.
+
+**npm**: https://www.npmjs.com/package/meedoo-ai
+**GitHub**: https://github.com/MeeDoo-AI/SDK_JavaScript
 
 ## Installation
 
