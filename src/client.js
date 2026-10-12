@@ -3,6 +3,8 @@
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
+const fs = require('fs');
+const path = require('path');
 const {
   APIError,
   AuthenticationError,
@@ -114,6 +116,60 @@ class Usage {
   stats() { return this._client._get('/v1/usage/stats'); }
 }
 
+class Files {
+  constructor(client) { this._client = client; }
+
+  /**
+   * Upload a file to the MeeDoo API.
+   * @param {string} filePath - Path to the file on disk
+   * @param {Object} [metadata] - Optional metadata
+   * @param {boolean} [process=false] - Whether to process the file
+   * @returns {Promise<Object>} File metadata response
+   */
+  async upload(filePath, metadata, process = false) {
+    const fileBuffer = fs.readFileSync(filePath);
+    const filename = path.basename(filePath);
+    const boundary = '----MeeDooBoundary' + Math.random().toString(16).slice(2);
+    let body = '';
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`;
+    body += `Content-Type: application/octet-stream\r\n\r\n`;
+    const prefix = Buffer.from(body, 'utf-8');
+    const suffix = Buffer.from(`\r\n--${boundary}\r\n`, 'utf-8');
+    let fieldBody = '';
+    fieldBody += `Content-Disposition: form-data; name="process"\r\n\r\n${String(process)}\r\n`;
+    if (metadata !== undefined && metadata !== null) {
+      fieldBody += `--${boundary}\r\n`;
+      fieldBody += `Content-Disposition: form-data; name="metadata"\r\n\r\n${JSON.stringify(metadata)}\r\n`;
+    }
+    fieldBody += `--${boundary}--\r\n`;
+    const fieldBuf = Buffer.from(fieldBody, 'utf-8');
+    const multipartBody = Buffer.concat([prefix, fileBuffer, suffix, fieldBuf]);
+
+    const url = new URL(`${this._client.baseURL}/v1/files/`);
+    const isHttps = url.protocol === 'https:';
+    const mod = isHttps ? https : http;
+    return this._client._requestMultipart(mod, url, multipartBody, boundary);
+  }
+
+  list() { return this._client._get('/v1/files/'); }
+
+  get(fileId) { return this._client._get(`/v1/files/${fileId}`); }
+
+  /**
+   * Download file content as raw bytes.
+   * @param {string} fileId - File ID
+   * @returns {Promise<Buffer>} Raw file content
+   */
+  async getContent(fileId) {
+    return this._client._getRaw(`/v1/files/${fileId}/content`);
+  }
+
+  async delete(fileId) {
+    return this._client._delete(`/v1/files/${fileId}`);
+  }
+}
+
 class MeeDooClient {
   /**
    * Create a MeeDoo AI client.
@@ -132,6 +188,7 @@ class MeeDooClient {
     this.chat = { completions: new ChatCompletions(this) };
     this.models = new Models(this);
     this.usage = new Usage(this);
+    this.files = new Files(this);
   }
 
   _headers() {
@@ -173,6 +230,90 @@ class MeeDooClient {
         throw e;
       }
     }
+  }
+
+  async _delete(path) {
+    const url = new URL(`${this.baseURL}${path}`);
+    const isHttps = url.protocol === 'https:';
+    const mod = isHttps ? https : http;
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        return await this._request(mod, url, 'DELETE');
+      } catch (e) {
+        if (e instanceof APIError && attempt < this.maxRetries) {
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  _requestMultipart(mod, url, body, boundary) {
+    return new Promise((resolve, reject) => {
+      const options = {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': Buffer.byteLength(body),
+        },
+        timeout: this.timeout,
+      };
+      const req = mod.request(url, options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try { resolve(JSON.parse(data)); }
+            catch { resolve(data); }
+          } else if (res.statusCode === 401) {
+            reject(new AuthenticationError());
+          } else if (res.statusCode === 429) {
+            reject(new RateLimitError());
+          } else {
+            let parsed;
+            try { parsed = JSON.parse(data); } catch { parsed = { detail: data }; }
+            reject(new APIError(parsed.detail || `HTTP ${res.statusCode}`, res.statusCode, parsed));
+          }
+        });
+      });
+      req.on('error', (e) => reject(new APIError(e.message)));
+      req.on('timeout', () => { req.destroy(); reject(new APIError('Request timeout')); });
+      req.write(body);
+      req.end();
+    });
+  }
+
+  _getRaw(path) {
+    return new Promise((resolve, reject) => {
+      const url = new URL(`${this.baseURL}${path}`);
+      const isHttps = url.protocol === 'https:';
+      const mod = isHttps ? https : http;
+      const req = mod.request(url, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${this.apiKey}` },
+        timeout: this.timeout,
+      }, (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const buf = Buffer.concat(chunks);
+          if (res.statusCode === 200) {
+            resolve(buf);
+          } else if (res.statusCode === 401) {
+            reject(new AuthenticationError());
+          } else if (res.statusCode === 429) {
+            reject(new RateLimitError());
+          } else {
+            reject(new APIError(`HTTP ${res.statusCode}`, res.statusCode));
+          }
+        });
+      });
+      req.on('error', (e) => reject(new APIError(e.message)));
+      req.on('timeout', () => { req.destroy(); reject(new APIError('Request timeout')); });
+      req.end();
+    });
   }
 
   _request(mod, url, method, body) {

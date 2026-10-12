@@ -5,6 +5,7 @@ export declare class MeeDooClient {
   chat: { completions: ChatCompletions };
   models: Models;
   usage: Usage;
+  files: Files;
   config(): Promise<any>;
   health(): Promise<any>;
 }
@@ -20,6 +21,14 @@ export declare class Models {
 export declare class Usage {
   credits(): Promise<{ credit_balance: number; token_balance: number }>;
   stats(): Promise<any>;
+}
+
+export declare class Files {
+  upload(filePath: string, metadata?: any, process?: boolean): Promise<any>;
+  list(): Promise<any>;
+  get(fileId: string): Promise<any>;
+  getContent(fileId: string): Promise<Buffer>;
+  delete(fileId: string): Promise<any>;
 }
 
 export interface ChatCompletionParams {
