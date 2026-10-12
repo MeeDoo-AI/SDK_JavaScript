@@ -1,0 +1,20 @@
+{
+  "name": "meedoo-ai",
+  "version": "1.0.0",
+  "description": "Official MeeDoo AI JavaScript/TypeScript SDK — Chat Completions, Models, MeeJudge, and more",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node tests/test_sdk.js"
+  },
+  "keywords": ["meedoo", "ai", "llm", "chat", "completions", "judge", "sdk"],
+  "author": "MeeDoo <contact@meedoo.co>",
+  "license": "MIT",
+  "homepage": "https://meedoo.co",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/meedoo-ai/meedoo-js"
+  },
+  "dependencies": {}
+}
