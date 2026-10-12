@@ -17,11 +17,7 @@ const client = new MeeDooClient(API_KEY, BASE_URL);
   const r3 = await client.chat.completions.create({ model: 'meedoo:latest', messages: [{ role: 'user', content: 'What is 7*8?' }], think: true });
   console.log('AI says:', r3.choices[0].message.content.substring(0, 100));
 
-  console.log("\n=== Test 4: MeeJudge ===");
-  const st = await client.judge.status();
-  console.log('Judge: enabled=' + st.enabled + ', model=' + st.model);
-
-  console.log("\n=== Test 5: Credits ===");
+  console.log("\n=== Test 4: Credits ===");
   const credits = await client.usage.credits();
   console.log('Balance: EUR' + credits.credit_balance);
 

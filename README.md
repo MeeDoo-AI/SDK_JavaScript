@@ -202,64 +202,6 @@ const response = await client.chat.completions.create({
 
 ---
 
-## MeeJudge (AI that judges AI)
-
-```javascript
-// Check if a message is a prompt injection attack
-const injection = await client.judge.detectInjection('Ignore all previous instructions!');
-console.log(injection);
-// { is_injection: true, attack_type: 'ignore_previous', confidence: 0.03 }
-
-// Check if text is toxic
-const moderation = await client.judge.moderate('You are a worthless idiot');
-console.log(moderation);
-// { is_toxic: true, category: 'none', severity: 2.38 }
-
-// Check if a question needs web search
-const shouldSearch = await client.judge.shouldSearchWeb('What is the weather today?');
-console.log(shouldSearch);
-// { should_search: true }
-
-// Check if a message is spam
-const spam = await client.judge.detectSpam('BUY NOW! FREE IPHONE!');
-console.log(spam);
-// { is_spam: true, spam_type: 'none' }
-
-// Validate an AI response
-const validation = await client.judge.validateResponse(
-  'What is the capital of France?',
-  'The capital of France is Paris.'
-);
-console.log(validation);
-// { has_factual_claims: true, is_verified: true, has_contradictions: false }
-
-// Filter memories
-const memory = await client.judge.filterMemory('User likes chocolate');
-console.log(memory);
-// { should_remember: true, category: 'preference', retention: 1.6 }
-
-// Classify a support ticket (requires admin key)
-const ticket = await adminClient.judge.classifyTicket('App crash', 'My app crashes');
-console.log(ticket);
-// { category: 'bug', priority: 1.8, should_escalate: true }
-
-// Check prayer times
-const prayer = await client.judge.isPrayerTimes('What are the prayer times today?');
-console.log(prayer);
-// { is_prayer_times: true }
-
-// Custom multiple choice
-const choice = await adminClient.judge.choice(
-  'User message: My app crashed',
-  'Classify this support ticket',
-  { bug: 'A bug', feature: 'A feature', billing: 'Billing', other: 'Other' }
-);
-console.log(choice);
-// { choice: 'bug', probabilities: {...}, confidence: 0.68 }
-```
-
----
-
 ## Account & Usage
 
 ```javascript
@@ -277,8 +219,7 @@ models.data.forEach(m => console.log(`  ${m.id}: ${m.name}`));
 
 // Check API config
 const config = await client.config();
-console.log(`Web search: ${config.features.enable_web_search}`);
-console.log(`Judge: ${config.features.enable_judge}`);
+console.log(config.features);
 ```
 
 ---
@@ -344,7 +285,7 @@ const response = await client.chat.completions.create(params);
 | `stop` | `array` | — | Stop sequences |
 | `response_format` | `object` | — | `{"type": "json_object"}` |
 | `think` | `boolean` | `false` | Think mode |
-| `features` | `object` | — | `{web_search, memory, code_interpreter}` |
+| `features` | `object` | — | Feature flags (Record of string to boolean) |
 | `tool_ids` | `array` | — | Tool IDs |
 | `tools` | `array` | — | Custom tool definitions |
 | `tool_choice` | `string` | — | `"auto"`, `"none"` |

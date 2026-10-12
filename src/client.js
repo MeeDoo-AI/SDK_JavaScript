@@ -114,61 +114,6 @@ class Usage {
   stats() { return this._client._get('/v1/usage/stats'); }
 }
 
-class Judge {
-  constructor(client) { this._client = client; }
-  status() { return this._client._get('/v1/judge/status'); }
-  decide(state, questions, model) {
-    const p = { state, questions };
-    if (model) p.model = model;
-    return this._client._post('/v1/judge/decide', p);
-  }
-  noul(state, instructions, criteria) {
-    const p = { state, instructions };
-    if (criteria) p.criteria = criteria;
-    return this._client._post('/v1/judge/noul', p);
-  }
-  choice(state, instructions, criteria) {
-    return this._client._post('/v1/judge/choice', { state, instructions, criteria });
-  }
-  score(state, instructions, levels) {
-    return this._client._post('/v1/judge/score', { state, instructions, levels });
-  }
-  shouldSearchWeb(userMessage) {
-    return this._client._post('/v1/judge/should-search-web', { user_message: userMessage });
-  }
-  detectInjection(userMessage) {
-    return this._client._post('/v1/judge/detect-injection', { user_message: userMessage });
-  }
-  moderate(text) {
-    return this._client._post('/v1/judge/moderate', { text });
-  }
-  detectSpam(message, userHistory = '') {
-    return this._client._post('/v1/judge/detect-spam', { message, user_history: userHistory });
-  }
-  validateResponse(userMessage, llmResponse, sources = '') {
-    return this._client._post('/v1/judge/validate-response', { user_message: userMessage, llm_response: llmResponse, sources });
-  }
-  validateSchema(jsonOutput, schemaDescription) {
-    return this._client._post('/v1/judge/validate-schema', { json_output: jsonOutput, schema_description: schemaDescription });
-  }
-  filterMemory(information, conversationContext = '') {
-    return this._client._post('/v1/judge/filter-memory', { information, conversation_context: conversationContext });
-  }
-  isPrayerTimes(userMessage) {
-    return this._client._post('/v1/judge/is-prayer-times', { user_message: userMessage });
-  }
-  classifyTicket(subject, body) {
-    return this._client._post('/v1/judge/classify-ticket', { subject, body });
-  }
-  classifyAlert(eventType, eventDetails) {
-    return this._client._post('/v1/judge/classify-alert', { event_type: eventType, event_details: eventDetails });
-  }
-  scoreSatisfaction(userMessages, assistantMessages) {
-    return this._client._post('/v1/judge/score-satisfaction', { user_messages: userMessages, assistant_messages: assistantMessages });
-  }
-  sentiment() { return this._client._get('/v1/judge/sentiment'); }
-}
-
 class MeeDooClient {
   /**
    * Create a MeeDoo AI client.
@@ -187,7 +132,6 @@ class MeeDooClient {
     this.chat = { completions: new ChatCompletions(this) };
     this.models = new Models(this);
     this.usage = new Usage(this);
-    this.judge = new Judge(this);
   }
 
   _headers() {
